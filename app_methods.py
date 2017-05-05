@@ -38,8 +38,8 @@ def get_link_all():
 
 
 if __name__ == '__main__':
-    goodlinks=get_link_all()
-    print len(goodlinks)
+    pass
+
 
 
 
