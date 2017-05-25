@@ -1,12 +1,14 @@
 import gzip
 import json
-
+from dates import datetime_handler
 import collections
 
 
 def write(filename, data):
     with gzip.GzipFile(filename, 'w') as jsongzip:
-        json_str = json.dumps(data,jsongzip, ensure_ascii=False).encode('utf8')
+        json_str = json.dumps(data,jsongzip, ensure_ascii=False,
+                              default=datetime_handler).encode(
+            'utf8')
         jsongzip.write(json_str)
 
 
