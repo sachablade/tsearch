@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DataSourceManagerImpl" format="xml" multifile-model="true">
+    <data-source source="LOCAL" name="tsearch.db" uuid="df94f445-0dba-40b2-b2eb-493dc4e88b45">
+      <driver-ref>sqlite.xerial</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
+      <jdbc-url>jdbc:sqlite:$PROJECT_DIR$/tmp/tsearch.db</jdbc-url>
+    </data-source>
+    <data-source source="LOCAL" name="tsearch.db [2]" uuid="0661d82b-4da2-4aaa-ad1f-84fbc2b8065e">
+      <driver-ref>sqlite.xerial</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
+      <jdbc-url>jdbc:sqlite:$PROJECT_DIR$/tmp/tsearch.db</jdbc-url>
+    </data-source>
+    <data-source source="LOCAL" name="tsearch.db [3]" uuid="793ed3dc-a0e3-4066-86fb-31a148e5d2df">
+      <driver-ref>sqlite.xerial</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
+      <jdbc-url>jdbc:sqlite:$PROJECT_DIR$/tmp/tsearch.db</jdbc-url>
+    </data-source>
+  </component>
+</project>

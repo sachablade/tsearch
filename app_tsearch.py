@@ -1,63 +1,35 @@
 # coding=utf-8
-import os
-import pandas as pd
-
-from tools.jsongz import *
-from tools.dates import *
 from app_methods import *
-from tools.engine import *
+from tools.dates import *
 
-'''
-def get_config_file():
-    config = {}
-    if not os.path.exists(C.__TMP__):
-        os.makedirs(C.__TMP__)
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.sql import func
 
-    if not os.path.exists(C.__TMP__ + 'config.json.gz'):
-        config['full_update'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        config['tsearch'] = None
-        return config
-    else:
-        return read(C.__TMP__ + 'config.json.gz')
-'''
-
-def get_config_file():
-    with db_session() as db:
-        config = db.query(Config).all()
-        if len(config)==0:
-            conf=Config(CO_ACTION='FULL_UPDATE',DS_VALOR=datetime.now())
-            db.add(conf)
-            db.flush()
-        else:
-            for conf in config:
-                print conf.CO_ACTION
-
+from sqlAlchemy.models import *
 
 
 if __name__ == '__main__':
-    config = get_config_file()
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    d = days_between(config['full_update'], now, "%Y-%m-%d %H:%M:%S")
+    engine = db_connect()
+    create_tables(engine)
+    Session = sessionmaker(bind=engine)
+    session = Session()
 
-    if config['tsearch'] is None or d > 0:
-        data = get_link_all()
-        df = pd.DataFrame(data, columns=['url'])
-        df['hash'] = df['url'].apply(lambda x: x.__hash__())
-        df['update'] = datetime.now()
-        df['chapters'] = 0
-        config['tsearch'] = df.to_dict(orient='split')
-        # write(C.__TMP__ + 'config.json.gz', config)
+    qry = session.query(func.max(UrlPageSearch.update_date).label(
+        "update_date"))
 
-    extract = pd.DataFrame(data=config['tsearch']['data']
-                           ,columns=config['tsearch']['columns'])
-    extract['update'] = pd.to_datetime(extract['update'])
+    res = qry.one()
+    lastupdate = res.update_date
+    if lastupdate is None:
+        lastupdate= datetime.now()
 
-    mask = (extract['update'] > (datetime.now() - timedelta(7))) \
-           & (extract['update'] <=datetime.now())
-    df = extract.loc[mask]
-
-    for index, row in df.iterrows():
-        get_info_serie(row['url'],row['chapters'])
-
-
-    # write(C.__TMP__ + 'config.json.gz', config)
+    if abs((datetime.now() - lastupdate).days)>7 or res.update_date is None:
+        for link in get_link_all():
+            hash =  link.encode('utf-8').__hash__()%(10**8)
+            item = session.query(UrlPageSearch).filter_by(id=hash).first()
+            if item is None:
+                session.merge(UrlPageSearch(id=hash,
+                                            url=link,
+                                            type="newpct",
+                                            update_date=datetime.now()))
+        session.commit()
+    session.close()
