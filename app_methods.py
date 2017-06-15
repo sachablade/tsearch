@@ -60,67 +60,67 @@ def get_links_pagination(url):
 
 
 def get_info_serie(session, sgroup):
-    soup = BeautifulSoup(urlopen(sgroup.url.encode('utf-8')), 'html.parser')
-
-    capitulos = 0
-
     try:
-        capitulos = soup.find_all("div", class_="page-box")[1].findAll('strong')[0].text
-    except Exception as e:
-        print 'chapters'
+        soup = BeautifulSoup(urlopen(sgroup.url.decode('iso-8859-1').encode('utf-8')), 'html.parser')
 
-    if int(capitulos.split(" ")[1]) > sgroup.chapters:
-        sgroup.chapters = int(capitulos.split(" ")[1])
-        '''
-        try:
-            info['plot'] = soup.find("div", class_="sinopsis").text
-        except Exception as e:
-            print 'plot'
-        try:
-            info['plot_description'] = soup.find("div", class_="descripcion_top").text
-        except Exception as e:
-            print 'plot_description'
-        '''
+        capitulos = 0
 
         try:
-            title = soup.find_all("ul", class_="breadcrumbs")[0].findAll('a', href=True)
-            sgroup.title = str(title[len(title) - 1].text.encode('utf-8')).strip().decode('utf-8')
-            print sgroup.title
+            capitulos = soup.find_all("div", class_="page-box")[1].findAll('strong')[0].text
         except Exception as e:
-            print 'title'
-        '''
-        try:
-            for link in soup.find_all("div", class_="entry-left")[0].findAll('img'):
-                info['image'] = link['src']
-        except Exception as e:
-            print 'image'
-        '''
-        #Obtengo la paginación para buscar enlaces
-        pagination = []
-        try:
-            for link in soup.find_all("ul", class_="pagination")[0].findAll('a', href=True):
-                pagination.append(link['href'].encode('utf-8'))
-            pagination = sorted(list(set(pagination)))
-        except Exception as e:
-            pagination=[]
+            print 'chapters'
 
-        #Busco los enlaces de la serie
-        pre_links = []
-        try:
-            for link in soup.find_all("ul", class_="buscar-list")[0].findAll('a', href=True):
-                pre_links.append(link['href'].encode('utf-8'))
+        if int(capitulos.split(" ")[1]) > sgroup.chapters:
+            sgroup.chapters = int(capitulos.split(" ")[1])
+            '''
+            try:
+                info['plot'] = soup.find("div", class_="sinopsis").text
+            except Exception as e:
+                print 'plot'
+            try:
+                info['plot_description'] = soup.find("div", class_="descripcion_top").text
+            except Exception as e:
+                print 'plot_description'
+            '''
 
-            for pag in pagination[1:]:
-                pre_links += get_links_pagination(pag)
-            pre_links = list(set(pre_links))
-        except Exception as e:
+            try:
+                title = soup.find_all("ul", class_="breadcrumbs")[0].findAll('a', href=True)
+                sgroup.title = str(title[len(title) - 1].text.encode('utf-8')).strip().decode('utf-8')
+                print sgroup.title
+            except Exception as e:
+                print 'title'
+            '''
+            try:
+                for link in soup.find_all("div", class_="entry-left")[0].findAll('img'):
+                    info['image'] = link['src']
+            except Exception as e:
+                print 'image'
+            '''
+            #Obtengo la paginación para buscar enlaces
+            pagination = []
+            try:
+                for link in soup.find_all("ul", class_="pagination")[0].findAll('a', href=True):
+                    pagination.append(link['href'].encode('utf-8'))
+                pagination = sorted(list(set(pagination)))
+            except Exception as e:
+                pagination=[]
+
+            #Busco los enlaces de la serie
             pre_links = []
+            try:
+                for link in soup.find_all("ul", class_="buscar-list")[0].findAll('a', href=True):
+                    pre_links.append(link['href'].encode('utf-8'))
 
-        sgroup.update_date=max(get_info(session, sgroup, p) for p in pre_links)
+                for pag in pagination[1:]:
+                    pre_links += get_links_pagination(pag)
+                pre_links = list(set(pre_links))
+            except Exception as e:
+                pre_links = []
 
-
+            sgroup.update_date=max(get_info(session, sgroup, p) for p in pre_links)
         session.merge(sgroup)
-
+    except:
+        raise
 
 
 def remove_no_printable_chars(str):

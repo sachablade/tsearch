@@ -39,7 +39,7 @@ class Series(DeclarativeBase):
 
     idGroup = Column('ID_SERIES_GROUP', Integer, ForeignKey('SERIES_GROUP.ID_SERIES_GROUP'))
     id = Column('ID_SERIES', Integer, nullable=False, primary_key=True)
-    url = Column('URL', String(100), nullable=False)
+    url = Column('URL', String(200), nullable=False)
     title = Column('TITLE', String(200), nullable=True)
     torrent = Column('URL_TORRENT', String(200), nullable=True)
     update_date = Column('UPDATE_DATE', DateTime, nullable=True)
