@@ -1,12 +1,19 @@
 # coding=utf-8
+import math
+import re
+
+import datetime
+
 import app_constants as C
-from datetime import datetime
+
 from itertools import chain
 from toolz.itertoolz import remove
-import re
+
 from urllib2 import urlopen
 from bs4 import BeautifulSoup
+from sqlAlchemy.models import Series
 
+from dateutil import parser
 from memory_profiler import profile
 
 
@@ -44,20 +51,27 @@ def get_link_all():
         pagination += pagination_aux
     return list(remove(goodlinks, set(getlinks)))
 
-
-def get_info_serie(url, chapters):
+def get_links_pagination(url):
     soup = BeautifulSoup(urlopen(url), 'html.parser')
-    info = {'title':'','chapters': 0, 'plot': '', 'plot_description': ''}
+    pre_links = []
+    for link in soup.find_all("ul", class_="buscar-list")[0].findAll('a', href=True):
+        pre_links.append(link['href'].encode('utf-8'))
+    return pre_links
 
-    update_date = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+def get_info_serie(session, sgroup):
+    soup = BeautifulSoup(urlopen(sgroup.url.encode('utf-8')), 'html.parser')
+
+    capitulos = 0
+
     try:
-        capitulos = soup.find_all("div", class_="page-box")[1].findAll(
-            'strong')[0].text
-        info['chapters'] = int(capitulos.split(" ")[1])
+        capitulos = soup.find_all("div", class_="page-box")[1].findAll('strong')[0].text
     except Exception as e:
         print 'chapters'
 
-    if info['chapters'] > chapters:
+    if int(capitulos.split(" ")[1]) > sgroup.chapters:
+        sgroup.chapters = int(capitulos.split(" ")[1])
+        '''
         try:
             info['plot'] = soup.find("div", class_="sinopsis").text
         except Exception as e:
@@ -66,21 +80,109 @@ def get_info_serie(url, chapters):
             info['plot_description'] = soup.find("div", class_="descripcion_top").text
         except Exception as e:
             print 'plot_description'
+        '''
+
         try:
             title = soup.find_all("ul", class_="breadcrumbs")[0].findAll('a', href=True)
-            info['title'] = str(title[len(title) - 1].text.encode('utf-8')).strip()
-            print info['title']
+            sgroup.title = str(title[len(title) - 1].text.encode('utf-8')).strip().decode('utf-8')
+            print sgroup.title
         except Exception as e:
             print 'title'
+        '''
         try:
             for link in soup.find_all("div", class_="entry-left")[0].findAll('img'):
                 info['image'] = link['src']
         except Exception as e:
             print 'image'
+        '''
+        #Obtengo la paginación para buscar enlaces
+        pagination = []
+        try:
+            for link in soup.find_all("ul", class_="pagination")[0].findAll('a', href=True):
+                pagination.append(link['href'].encode('utf-8'))
+            pagination = sorted(list(set(pagination)))
+        except Exception as e:
+            pagination=[]
+
+        #Busco los enlaces de la serie
+        pre_links = []
+        try:
+            for link in soup.find_all("ul", class_="buscar-list")[0].findAll('a', href=True):
+                pre_links.append(link['href'].encode('utf-8'))
+
+            for pag in pagination[1:]:
+                pre_links += get_links_pagination(pag)
+            pre_links = list(set(pre_links))
+        except Exception as e:
+            pre_links = []
+
+        sgroup.update_date=max(get_info(session, sgroup, p) for p in pre_links)
+
+
+        session.merge(sgroup)
 
 
 
+def remove_no_printable_chars(str):
+    strReturn=str.replace('\xc2\xa0', '')
+    strReturn=strReturn.replace('\t', ' ')
+    return strReturn
 
-if __name__ == '__main__':
-    get_info_serie('http://www.newpct1.com/series-hd/el-pequeño-quinquin'
-                   '/2018', 0)
+
+def get_info(session, sgroup, url):
+    try:
+        serie=Series()
+        serie.idGroup=sgroup.id
+        serie.id=url.encode('utf-8').__hash__()%(10**8)
+        serie.url = url
+        soup = BeautifulSoup(urlopen(url), 'html.parser')
+        # Obtenemos el título
+
+        torrent_title = soup.find_all("div", class_="page-box")[0].find('h1').text.encode('latin1').split('/')
+        if len(torrent_title) > 1:
+            torrent_title = remove_no_printable_chars(
+                torrent_title[1].decode('iso-8859-1').encode('utf8'))
+        else:
+            torrent_title = remove_no_printable_chars(
+                torrent_title[0].decode('iso-8859-1').encode('utf8'))
+
+        serie.title=torrent_title.decode('utf-8')
+
+        # Obtenemos el tamaño y la fecha de publicación
+        try:
+            for link in soup.find_all("span", class_="imp"):
+                if link.text.find('Size:') != -1:
+                    try:
+                        size = float(link.text.split(' ')[1].encode('utf-8'))
+                        serie.size = 0.0 if math.isnan(size) else size
+                        serie.unit = link.text.split(' ')[2].encode('utf-8')
+                    except Exception as e:
+                        serie.size = 0.0
+                        serie.unit = ''
+
+                serie.update_date = datetime.datetime(2007, 1, 1)
+                if link.text.find('Fecha:') != -1:
+                    try:
+                        serie.update_date = datetime.datetime.strptime(link.text.split(' ')[1].encode('utf-8'), "%d-%m-%Y")
+                    except Exception as e:
+                        pass
+
+
+        except Exception as e:
+            serie.size = 0.0
+            serie.unit = ''
+
+        try:
+            tab1 = soup.find("div", {"id": "tab1"})
+            for link in tab1.find_all("a", href=True):
+                serie.torrent = str(link['href'])
+        except Exception as e:
+            serie.torrent = None
+        session.merge(serie)
+        return serie.update_date
+
+    except:
+        print url
+        return datetime.datetime(2007, 1, 1)
+
+
