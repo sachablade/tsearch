@@ -19,5 +19,11 @@
       <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
       <jdbc-url>jdbc:sqlite:$PROJECT_DIR$/tmp/tsearch.db</jdbc-url>
     </data-source>
+    <data-source source="LOCAL" name="tsearch.db [4]" uuid="09569acc-4e27-4a39-8bcf-dd7bb12e3192">
+      <driver-ref>sqlite.xerial</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
+      <jdbc-url>jdbc:sqlite:$PROJECT_DIR$/tmp/tsearch.db</jdbc-url>
+    </data-source>
   </component>
 </project>

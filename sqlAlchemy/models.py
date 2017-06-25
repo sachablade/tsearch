@@ -16,8 +16,9 @@ DeclarativeBase = declarative_base()
 
 
 def db_connect():
-    return create_engine('mysql://root:Passw0rd!@localhost:3306/tsearch', encoding='utf-8', echo=False)
-    #return create_engine('sqlite:///tmp/tsearch.db', encoding='utf-8', echo=False)
+    #return create_engine('mysql://root:021010@localhost:3306/tsearch',
+    #                     encoding='utf-8', echo=False)
+    return create_engine('sqlite:///tmp/tsearch.db', encoding='utf-8', echo=False)
 
 
 def create_tables(engine):

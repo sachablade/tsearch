@@ -61,7 +61,7 @@ def get_links_pagination(url):
 
 def get_info_serie(session, sgroup):
     try:
-        soup = BeautifulSoup(urlopen(sgroup.url.decode('iso-8859-1').encode('utf-8')), 'html.parser')
+        soup = BeautifulSoup(urlopen(sgroup.url.encode('iso-8859-1')), 'html.parser')
 
         capitulos = 0
 

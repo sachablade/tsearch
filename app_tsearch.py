@@ -33,11 +33,12 @@ if __name__ == '__main__':
     filter=session.query(SeriesGroup).filter(SeriesGroup.update_date >= datetime.now()-timedelta(7))
 
     for p in filter:
+        # print p.url.encode('iso-8859-1')
         try:
             get_info_serie(session, p)
             session.commit()
         except:
-            print p
+            print p.url
             session.rollback()
             raise
 
