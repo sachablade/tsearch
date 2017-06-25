@@ -40,6 +40,13 @@ if __name__ == '__main__':
         except:
             print p.url
             session.rollback()
-            raise
+
 
     session.close()
+
+#http://www.newpct1.com/series/pg/1
+#Grimm
+#Mentes Criminales
+#Anatomia De Grey
+#The White Princess
+
