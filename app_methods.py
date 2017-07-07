@@ -1,9 +1,9 @@
 # coding=utf-8
 import math
 import re
-
+import traceback
 import datetime
-
+import warnings
 import app_constants as C
 
 from itertools import chain
@@ -12,9 +12,6 @@ from toolz.itertoolz import remove
 from urllib2 import urlopen
 from bs4 import BeautifulSoup
 from sqlAlchemy.models import Series
-
-from dateutil import parser
-from memory_profiler import profile
 
 
 def isin(x):
@@ -51,6 +48,7 @@ def get_link_all():
         pagination += pagination_aux
     return list(remove(goodlinks, set(getlinks)))
 
+
 def get_links_pagination(url):
     soup = BeautifulSoup(urlopen(url), 'html.parser')
     pre_links = []
@@ -61,7 +59,7 @@ def get_links_pagination(url):
 
 def get_info_serie(session, sgroup):
     try:
-        soup = BeautifulSoup(urlopen(sgroup.url.encode('iso-8859-1')), 'html.parser')
+        soup = BeautifulSoup(urlopen(sgroup.url.decode('iso-8859-1').encode('UTF-8')), 'html.parser')
 
         capitulos = 0
 
@@ -72,81 +70,87 @@ def get_info_serie(session, sgroup):
 
         if int(capitulos.split(" ")[1]) > sgroup.chapters:
             sgroup.chapters = int(capitulos.split(" ")[1])
-            '''
-            try:
-                info['plot'] = soup.find("div", class_="sinopsis").text
-            except Exception as e:
-                print 'plot'
-            try:
-                info['plot_description'] = soup.find("div", class_="descripcion_top").text
-            except Exception as e:
-                print 'plot_description'
-            '''
 
-            try:
-                title = soup.find_all("ul", class_="breadcrumbs")[0].findAll('a', href=True)
-                sgroup.title = str(title[len(title) - 1].text.encode('utf-8')).strip().decode('utf-8')
-                print sgroup.title
-            except Exception as e:
-                print 'title'
-            '''
-            try:
-                for link in soup.find_all("div", class_="entry-left")[0].findAll('img'):
-                    info['image'] = link['src']
-            except Exception as e:
-                print 'image'
-            '''
-            #Obtengo la paginación para buscar enlaces
+            if sgroup.title is None or len(sgroup.title) == 0:
+                try:
+                    title = soup.find_all("ul", class_="breadcrumbs")[0].findAll('a', href=True)
+                    sgroup.title = str(title[len(title) - 1].text.encode('utf-8')).strip().decode('utf-8')
+
+                except Exception as e:
+                    raise
+
+            # Obtengo la paginación para buscar enlaces
             pagination = []
             try:
                 for link in soup.find_all("ul", class_="pagination")[0].findAll('a', href=True):
                     pagination.append(link['href'].encode('utf-8'))
                 pagination = sorted(list(set(pagination)))
             except Exception as e:
-                pagination=[]
+                # No tiene paginación
+                pagination = []
 
-            #Busco los enlaces de la serie
+            # Busco los enlaces de la serie
             pre_links = []
             try:
                 for link in soup.find_all("ul", class_="buscar-list")[0].findAll('a', href=True):
                     pre_links.append(link['href'].encode('utf-8'))
 
-                for pag in pagination[1:]:
-                    pre_links += get_links_pagination(pag)
+                pagnumber = (sgroup.chapters / 10) + (0 if sgroup.chapters%10==0 else 1)
+                if len(pagination)>0 and len(pagination) < (pagnumber):
+                    pag = '/'.join(pagination[0].split("/")[:-1]) + '/%d'
+                    for i in range(2, pagnumber+1):
+                        pre_links += get_links_pagination(pag%i)
+                else:
+                    for pag in pagination[1:]:
+                        pre_links += get_links_pagination(pag)
                 pre_links = list(set(pre_links))
+
+                if len(pre_links) < sgroup.chapters:
+                    warnings.warn("%s ---> chapters:%d real :%d" % (sgroup.title, sgroup.chapters, len(pre_links)))
+
             except Exception as e:
+                raise
                 pre_links = []
 
-            sgroup.update_date=max(get_info(session, sgroup, p) for p in pre_links)
+            sgroup.update_date = max(get_info(session, sgroup, p) for p in pre_links)
+            print '+  ', sgroup.title
+        else:
+            print '*  ', sgroup.title
         session.merge(sgroup)
     except:
+        print traceback.print_exc()
         raise
 
 
 def remove_no_printable_chars(str):
-    strReturn=str.replace('\xc2\xa0', '')
-    strReturn=strReturn.replace('\t', ' ')
+    strReturn = str.replace('\xc2\xa0', '')
+    strReturn = strReturn.replace('\t', ' ')
     return strReturn
 
 
 def get_info(session, sgroup, url):
     try:
-        serie=Series()
-        serie.idGroup=sgroup.id
-        serie.id=url.encode('utf-8').__hash__()%(10**8)
+        serie = Series()
+        serie.idGroup = sgroup.id
+        serie.id = url.decode('iso-8859-1').encode('UTF-8').__hash__() % (10 ** 8)
         serie.url = url
-        soup = BeautifulSoup(urlopen(url), 'html.parser')
+        soup = BeautifulSoup(urlopen(url.decode('iso-8859-1').encode('UTF-8')), 'html.parser')
         # Obtenemos el título
 
-        torrent_title = soup.find_all("div", class_="page-box")[0].find('h1').text.encode('latin1').split('/')
-        if len(torrent_title) > 1:
-            torrent_title = remove_no_printable_chars(
-                torrent_title[1].decode('iso-8859-1').encode('utf8'))
-        else:
-            torrent_title = remove_no_printable_chars(
-                torrent_title[0].decode('iso-8859-1').encode('utf8'))
+        try:
+            torrent_title = soup.find_all("div", class_="page-box")[0].find('h1').text.encode('UTF-8').split('/')
+            if len(torrent_title) > 1:
+                torrent_title = remove_no_printable_chars(
+                    torrent_title[1].decode('iso-8859-1').encode('utf8'))
+            else:
+                torrent_title = remove_no_printable_chars(
+                    torrent_title[0].decode('iso-8859-1').encode('utf8'))
 
-        serie.title=torrent_title.decode('utf-8')
+            serie.title = torrent_title
+        except UnicodeEncodeError:
+            raise UnicodeEncodeError
+        except:
+            serie.title = None
 
         # Obtenemos el tamaño y la fecha de publicación
         try:
@@ -157,32 +161,38 @@ def get_info(session, sgroup, url):
                         serie.size = 0.0 if math.isnan(size) else size
                         serie.unit = link.text.split(' ')[2].encode('utf-8')
                     except Exception as e:
+                        raise
                         serie.size = 0.0
                         serie.unit = ''
 
                 serie.update_date = datetime.datetime(2007, 1, 1)
                 if link.text.find('Fecha:') != -1:
                     try:
-                        serie.update_date = datetime.datetime.strptime(link.text.split(' ')[1].encode('utf-8'), "%d-%m-%Y")
+                        serie.update_date = datetime.datetime.strptime(link.text.split(' ')[1].encode('utf-8'),
+                                                                       "%d-%m-%Y")
                     except Exception as e:
+                        raise
                         pass
 
 
         except Exception as e:
             serie.size = 0.0
             serie.unit = ''
+            raise
 
         try:
             tab1 = soup.find("div", {"id": "tab1"})
             for link in tab1.find_all("a", href=True):
                 serie.torrent = str(link['href'])
-        except Exception as e:
+        except:
             serie.torrent = None
         session.merge(serie)
+        if serie.update_date is None or serie.torrent is None:
+            warnings.warn("%s ---> El capitulo:'%s' no existe!" % (sgroup.title, serie.url))
+            return datetime.datetime(2007, 1, 1)
         return serie.update_date
 
     except:
         print url
+        print traceback.print_exc()
         return datetime.datetime(2007, 1, 1)
-
-

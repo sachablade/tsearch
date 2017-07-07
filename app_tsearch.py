@@ -20,7 +20,7 @@ if __name__ == '__main__':
     if lastupdate is None:
         lastupdate= datetime.now()
 
-    if abs((datetime.now() - lastupdate).days)>7 or res.update_date is None:
+    if abs((datetime.now() - lastupdate).days)>1 or res.update_date is None:
         for link in get_link_all():
             hash =  link.encode('utf-8').__hash__()%(10**8)
             item = session.query(SeriesGroup).filter_by(id=hash).first()
@@ -30,10 +30,11 @@ if __name__ == '__main__':
                                             update_date=datetime.now()))
         session.commit()
 
-    filter=session.query(SeriesGroup).filter(SeriesGroup.update_date >= datetime.now()-timedelta(7))
+    #filter=session.query(SeriesGroup).filter(SeriesGroup.update_date >= datetime.now()-timedelta(1500))
+    #filter=session.query(SeriesGroup)
+    filter=session.query(SeriesGroup).filter(SeriesGroup.chapters==0)
 
     for p in filter:
-        # print p.url.encode('iso-8859-1')
         try:
             get_info_serie(session, p)
             session.commit()
@@ -41,12 +42,7 @@ if __name__ == '__main__':
             print p.url
             session.rollback()
 
-
     session.close()
 
-#http://www.newpct1.com/series/pg/1
-#Grimm
-#Mentes Criminales
-#Anatomia De Grey
-#The White Princess
+
 
