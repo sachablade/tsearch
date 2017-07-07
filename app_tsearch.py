@@ -31,8 +31,8 @@ if __name__ == '__main__':
         session.commit()
 
     #filter=session.query(SeriesGroup).filter(SeriesGroup.update_date >= datetime.now()-timedelta(1500))
-    #filter=session.query(SeriesGroup)
-    filter=session.query(SeriesGroup).filter(SeriesGroup.chapters==0)
+    filter=session.query(SeriesGroup)
+    #filter=session.query(SeriesGroup).filter(SeriesGroup.chapters==0)
 
     for p in filter:
         try:
