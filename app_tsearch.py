@@ -1,4 +1,6 @@
 # coding=utf-8
+import numpy
+
 from app_methods import *
 from tools.dates import *
 from sqlalchemy.orm import sessionmaker
@@ -18,21 +20,21 @@ if __name__ == '__main__':
     res = qry.one()
     lastupdate = res.update_date
     if lastupdate is None:
-        lastupdate= datetime.now()
+        lastupdate = datetime.now()
 
-    if abs((datetime.now() - lastupdate).days)>1 or res.update_date is None:
+    if abs((datetime.now() - lastupdate).days) > 1 or res.update_date is None:
         for link in get_link_all():
-            hash =  link.encode('utf-8').__hash__()%(10**8)
+            hash = link.__hash__() % (10 ** 8)
             item = session.query(SeriesGroup).filter_by(id=hash).first()
             if item is None:
-                session.merge(SeriesGroup(id=hash,
-                                            url=link,
-                                            update_date=datetime.now()))
+               session.merge(SeriesGroup(id=hash,
+                                          url=link,
+                                          update_date=datetime.now()))
         session.commit()
 
-    #filter=session.query(SeriesGroup).filter(SeriesGroup.update_date >= datetime.now()-timedelta(1500))
-    filter=session.query(SeriesGroup)
-    #filter=session.query(SeriesGroup).filter(SeriesGroup.chapters==0)
+    timeit = numpy.random.choice([10,100,300,600,3000], p=[0.5, 0.24, 0.15, 0.1, 0.01])
+    print 'Ejecutando desde hace %d días' % timeit
+    filter=session.query(SeriesGroup).filter(SeriesGroup.update_date >= datetime.now()-timedelta(timeit))
 
     for p in filter:
         try:
@@ -43,6 +45,3 @@ if __name__ == '__main__':
             session.rollback()
 
     session.close()
-
-
-

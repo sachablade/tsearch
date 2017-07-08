@@ -1,5 +1,6 @@
 # coding=utf-8
 import math
+import string
 import re
 import traceback
 import datetime
@@ -13,6 +14,7 @@ from urllib2 import urlopen
 from bs4 import BeautifulSoup
 from sqlAlchemy.models import Series
 
+__NONE_DATETIME__ = datetime.datetime(2000, 1, 1)
 
 def isin(x):
     return not any(re.findall(C.__TAG_PATTERN__, x))
@@ -27,7 +29,7 @@ def get_links_page(url, seq=[]):
         return x == url or x in (seq)
 
     soup = BeautifulSoup(urlopen(url), 'html.parser')
-    return list(remove(isin, remove(dropurl, [a['href'] for a in
+    return list(remove(isin, remove(dropurl, [a['href'].encode('UTF-8') for a in
                                               soup.find_all('a', href=True)])))
 
 
@@ -59,23 +61,14 @@ def get_links_pagination(url):
 
 def get_info_serie(session, sgroup):
     try:
-        soup = BeautifulSoup(urlopen(sgroup.url.decode('iso-8859-1').encode('UTF-8')), 'html.parser')
-
-        capitulos = 0
-
-        try:
-            capitulos = soup.find_all("div", class_="page-box")[1].findAll('strong')[0].text
-        except Exception as e:
-            print 'chapters'
-
-        if int(capitulos.split(" ")[1]) > sgroup.chapters:
-            sgroup.chapters = int(capitulos.split(" ")[1])
-
+        soup = BeautifulSoup(urlopen(sgroup.url), 'html.parser')
+        capitulos = int(soup.find_all("div", class_="page-box")[1].findAll('strong')[0].text.split(" ")[1])
+        if capitulos > sgroup.chapters:
+            sgroup.chapters = capitulos
             if sgroup.title is None or len(sgroup.title) == 0:
                 try:
                     title = soup.find_all("ul", class_="breadcrumbs")[0].findAll('a', href=True)
-                    sgroup.title = str(title[len(title) - 1].text.encode('utf-8')).strip().decode('utf-8')
-
+                    sgroup.title = str(title[len(title) - 1].text.encode('utf-8')).strip()
                 except Exception as e:
                     raise
 
@@ -96,20 +89,15 @@ def get_info_serie(session, sgroup):
                     pre_links.append(link['href'].encode('utf-8'))
 
                 pagnumber = (sgroup.chapters / 10) + (0 if sgroup.chapters%10==0 else 1)
-                if len(pagination)>0 and len(pagination) < (pagnumber):
+                if len(pagination)>0:
                     pag = '/'.join(pagination[0].split("/")[:-1]) + '/%d'
                     for i in range(2, pagnumber+1):
                         pre_links += get_links_pagination(pag%i)
-                else:
-                    for pag in pagination[1:]:
-                        pre_links += get_links_pagination(pag)
                 pre_links = list(set(pre_links))
 
                 if len(pre_links) < sgroup.chapters:
                     warnings.warn("%s ---> chapters:%d real :%d" % (sgroup.title, sgroup.chapters, len(pre_links)))
-
             except Exception as e:
-                raise
                 pre_links = []
 
             sgroup.update_date = max(get_info(session, sgroup, p) for p in pre_links)
@@ -121,34 +109,19 @@ def get_info_serie(session, sgroup):
         print traceback.print_exc()
         raise
 
-
-def remove_no_printable_chars(str):
-    strReturn = str.replace('\xc2\xa0', '')
-    strReturn = strReturn.replace('\t', ' ')
-    return strReturn
-
-
 def get_info(session, sgroup, url):
     try:
         serie = Series()
         serie.idGroup = sgroup.id
-        serie.id = url.decode('iso-8859-1').encode('UTF-8').__hash__() % (10 ** 8)
+        serie.id = url.__hash__() % (10 ** 8)
         serie.url = url
-        soup = BeautifulSoup(urlopen(url.decode('iso-8859-1').encode('UTF-8')), 'html.parser')
+        soup = BeautifulSoup(urlopen(url), 'html.parser')
         # Obtenemos el título
 
         try:
             torrent_title = soup.find_all("div", class_="page-box")[0].find('h1').text.encode('UTF-8').split('/')
-            if len(torrent_title) > 1:
-                torrent_title = remove_no_printable_chars(
-                    torrent_title[1].decode('iso-8859-1').encode('utf8'))
-            else:
-                torrent_title = remove_no_printable_chars(
-                    torrent_title[0].decode('iso-8859-1').encode('utf8'))
-
-            serie.title = torrent_title
-        except UnicodeEncodeError:
-            raise UnicodeEncodeError
+            torrent_title = torrent_title[len(torrent_title)-1]
+            serie.title = filter(lambda x: x in string.printable, torrent_title)
         except:
             serie.title = None
 
@@ -161,24 +134,19 @@ def get_info(session, sgroup, url):
                         serie.size = 0.0 if math.isnan(size) else size
                         serie.unit = link.text.split(' ')[2].encode('utf-8')
                     except Exception as e:
-                        raise
                         serie.size = 0.0
                         serie.unit = ''
 
-                serie.update_date = datetime.datetime(2007, 1, 1)
                 if link.text.find('Fecha:') != -1:
                     try:
                         serie.update_date = datetime.datetime.strptime(link.text.split(' ')[1].encode('utf-8'),
                                                                        "%d-%m-%Y")
                     except Exception as e:
-                        raise
-                        pass
-
+                        serie.update_date = __NONE_DATETIME__
 
         except Exception as e:
             serie.size = 0.0
             serie.unit = ''
-            raise
 
         try:
             tab1 = soup.find("div", {"id": "tab1"})
@@ -186,13 +154,15 @@ def get_info(session, sgroup, url):
                 serie.torrent = str(link['href'])
         except:
             serie.torrent = None
+
         session.merge(serie)
+
         if serie.update_date is None or serie.torrent is None:
             warnings.warn("%s ---> El capitulo:'%s' no existe!" % (sgroup.title, serie.url))
-            return datetime.datetime(2007, 1, 1)
+            return __NONE_DATETIME__
         return serie.update_date
 
     except:
         print url
         print traceback.print_exc()
-        return datetime.datetime(2007, 1, 1)
+        return __NONE_DATETIME__

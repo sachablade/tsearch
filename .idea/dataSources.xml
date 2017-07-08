@@ -7,23 +7,25 @@
       <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
       <jdbc-url>jdbc:sqlite:$PROJECT_DIR$/tmp/tsearch.db</jdbc-url>
     </data-source>
-    <data-source source="LOCAL" name="tsearch.db [2]" uuid="0661d82b-4da2-4aaa-ad1f-84fbc2b8065e">
+    <data-source source="LOCAL" name="tsearch.db [2]" uuid="beea46ea-7711-4298-8b96-6080c76ccfba">
       <driver-ref>sqlite.xerial</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
       <jdbc-url>jdbc:sqlite:$PROJECT_DIR$/tmp/tsearch.db</jdbc-url>
     </data-source>
-    <data-source source="LOCAL" name="tsearch.db [3]" uuid="793ed3dc-a0e3-4066-86fb-31a148e5d2df">
-      <driver-ref>sqlite.xerial</driver-ref>
+    <data-source source="LOCAL" name="tsearch@localhost" uuid="fd623def-7d31-47a0-837f-d6de6b813f17">
+      <driver-ref>mysql</driver-ref>
       <synchronize>true</synchronize>
-      <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
-      <jdbc-url>jdbc:sqlite:$PROJECT_DIR$/tmp/tsearch.db</jdbc-url>
-    </data-source>
-    <data-source source="LOCAL" name="tsearch.db [4]" uuid="09569acc-4e27-4a39-8bcf-dd7bb12e3192">
-      <driver-ref>sqlite.xerial</driver-ref>
-      <synchronize>true</synchronize>
-      <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
-      <jdbc-url>jdbc:sqlite:$PROJECT_DIR$/tmp/tsearch.db</jdbc-url>
+      <jdbc-driver>com.mysql.jdbc.Driver</jdbc-driver>
+      <jdbc-url>jdbc:mysql://localhost:3306/tsearch</jdbc-url>
+      <driver-properties>
+        <property name="autoReconnect" value="true" />
+        <property name="zeroDateTimeBehavior" value="convertToNull" />
+        <property name="tinyInt1isBit" value="false" />
+        <property name="characterEncoding" value="utf8" />
+        <property name="characterSetResults" value="utf8" />
+        <property name="yearIsDateType" value="false" />
+      </driver-properties>
     </data-source>
   </component>
 </project>
