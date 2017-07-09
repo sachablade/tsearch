@@ -162,6 +162,9 @@ def get_info(session, sgroup, url):
             return __NONE_DATETIME__
         return serie.update_date
 
+    except KeyboardInterrupt:
+        raise
+
     except:
         print url
         print traceback.print_exc()
